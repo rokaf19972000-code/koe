@@ -208,6 +208,7 @@
   body.game-fullscreen #menuCategoryLevel,
   body.game-fullscreen #menuSettingsLevel,
   body.game-fullscreen #menuWordcardsLevel,
+  body.game-fullscreen #menuVideosLevel,
   body.game-fullscreen .log-title,
   body.game-fullscreen .log-list,
   body.game-fullscreen .gallery-title,
@@ -485,6 +486,36 @@
     margin-top: 6px;
     opacity: 0;
     transition: opacity 0.2s ease;
+  }
+  /* 🤔 리들 게임 등에서 이모지 아래에 히라가나와 한글 뜻을 두 줄로 보여줄 때 사용 */
+  .emoji-btn .btn-text-jp {
+    display: block;
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--sumi);
+    margin-top: 6px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+  .emoji-btn .btn-text-kr {
+    display: block;
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    color: #8a8272;
+    margin-top: 2px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+  .emoji-btn.correct .btn-text-jp, .emoji-btn.correct .btn-text-kr,
+  .emoji-btn.correct-hint .btn-text-jp, .emoji-btn.correct-hint .btn-text-kr,
+  .emoji-btn.wrong .btn-text-jp, .emoji-btn.wrong .btn-text-kr {
+    opacity: 1;
+    color: #fff !important;
+  }
+  .emoji-btn.correct-hint .btn-text-jp, .emoji-btn.correct-hint .btn-text-kr {
+    color: var(--sumi) !important;
   }
   /* 🎈➡️🎈 이모지만으로는 뜻을 연상하기 어려운 단어를 위한 커스텀 SVG 아이콘 */
   .custom-icon-wrap {
@@ -771,34 +802,38 @@
     margin-bottom: 6px;
   }
   .riddle-hint-item {
-    background: var(--washi);
-    border: 1.5px dashed var(--line);
-    border-radius: 10px;
-    padding: 12px 14px;
-    margin-bottom: 8px;
+    padding: 2px;
+    margin-bottom: 0;
     font-size: 17px;
     line-height: 1.6;
     color: var(--sumi);
-    animation: quizAppear .3s cubic-bezier(.175, .885, .32, 1.275);
-  }
-  .riddle-hint-num {
-    display: inline-block;
-    font-size: 12px;
-    font-weight: 900;
-    color: #fff;
-    background: var(--hanko);
-    border-radius: 999px;
-    padding: 2px 9px;
-    margin-right: 8px;
-    vertical-align: middle;
   }
   .riddle-hint-kr {
-    display: block;
+    display: inline;
     font-size: 13.5px;
     color: #8a8272;
-    margin-top: 4px;
-    padding-left: 2px;
-    animation: quizAppear .25s cubic-bezier(.175, .885, .32, 1.275);
+  }
+  .video-desc {
+    font-size: 13px;
+    color: #8a8272;
+    text-align: center;
+    margin: 4px 0 14px;
+    line-height: 1.5;
+  }
+  .video-frame-wrap {
+    position: relative;
+    width: 100%;
+    padding-top: 56.25%; /* 16:9 비율 */
+    border-radius: 12px;
+    overflow: hidden;
+    border: 2px solid var(--sumi);
+    background: #000;
+  }
+  .video-frame-wrap iframe {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    border: 0;
   }
   .riddle-hint-counter {
     font-size: 12.5px;
@@ -3812,10 +3847,6 @@
         <!-- JS가 지금까지 나온 힌트 문장을 순서대로 넣어줍니다 -->
       </div>
 
-      <button class="quiz-audio-btn" id="riddleReplayBtn" onclick="replayRiddleHint()">
-        🔊 힌트 다시 듣기
-      </button>
-
       <div class="riddle-hint-counter" id="riddleHintCounter"></div>
 
       <div class="audio-emoji-options" id="riddleOptions">
@@ -5028,6 +5059,26 @@
   <div class="gallery-desc">카드를 누르면 발음을 들려주고 한글 뜻을 확인할 수 있어요 · 배경색은 게임에서 틀린 비율을 나타내요 (초록 0~10% · 노랑 10~50% · 분홍 50%↑)</div>
   <div class="gallery" id="gallery"></div>
   </div>
+
+<div class="menu-level" id="menuVideosLevel" style="display:none;">
+  <div class="menu-category-header">
+    <button class="lvl-btn" onclick="showTopMenu()">◀ 처음으로</button>
+    <div class="menu-category-title">🎬 히라가나 영상</div>
+    <span style="width:64px;"></span>
+  </div>
+
+  <div class="video-desc">일본 학연(学研) 공식 어린이 채널 「学研キッズTV」의 히라가나 학습 영상 시리즈예요. 순서대로 이어서 재생돼요.</div>
+
+  <div class="video-frame-wrap">
+    <iframe
+      src="https://www.youtube.com/embed/videoseries?list=PLFB38Ov7VG6mj6k7yZaaWSMpNOgN-o--x"
+      title="ひらがなをおぼえよう - 学研キッズTV"
+      frameborder="0"
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+      allowfullscreen>
+    </iframe>
+  </div>
+</div>
 
 </div>
 
@@ -7713,6 +7764,9 @@ let riddleHintIndex = 0;
 let riddleTranslationRevealCount = 0; // 지금까지 정답을 시도해 한글 뜻이 공개된 힌트 개수
 let isRiddleAnswering = false;
 let riddleAdvanceTimer = null;
+let riddleHintTimer = null; // 힌트가 1초마다 자동으로 다음 힌트로 넘어가게 하는 타이머
+let riddleHintSlots = null; // 이번 문제에 쓸 5개짜리 힌트(일본어+한글) 배열
+const RIDDLE_TOTAL_HINTS = 5;
 
 /* ❓ '질문에 답하기' 게임 상태 변수 */
 let qaScore = 0;
@@ -9331,9 +9385,12 @@ function wsCheckSelection(path){
   }
 }
 
-/* 🤔 '나는 무엇일까요?' 수수께끼 게임 로직 */
+/* 🤔 '나는 무엇일까요?' 수수께끼 게임 로직
+   — 힌트는 총 5개이며, 정답을 맞히든 못 맞히든 1초마다 자동으로 다음 힌트가 나옵니다.
+   — 몇 번째 힌트에서 맞혔는지에 따라 점수가 달라집니다: 1번째 5점, 2번째 4점, 3번째 3점, 4번째 2점, 5번째 1점. */
 function generateRiddleQuestion(){
   clearTimeout(riddleAdvanceTimer);
+  clearTimeout(riddleHintTimer);
   isRiddleAnswering = false;
   const feedbackEl = document.getElementById('riddleFeedback');
   if(feedbackEl) feedbackEl.textContent = '';
@@ -9347,44 +9404,82 @@ function generateRiddleQuestion(){
   previousRiddleJp = riddle.jp;
   riddleHintIndex = 1;
   riddleTranslationRevealCount = 0;
+  riddleHintSlots = buildRiddleHintSlots(riddle);
 
   renderRiddleHints(true);
   buildRiddleChoices();
 }
 
+/* 이 문제에서 쓸 5개짜리 힌트를 미리 계산해둡니다.
+   1~3번째는 데이터에 있는 실제 힌트, 4번째는 정답의 앞글자를 하나씩 더 보여주는 힌트,
+   5번째(마지막)는 항상 고정된 문구로 마무리합니다. */
+function buildRiddleHintSlots(riddle){
+  const dataHints = riddle.hints || [];
+  const dataHintsKr = riddle.hintsKr || [];
+  const slots = [];
+  const fillerCount = RIDDLE_TOTAL_HINTS - 1; // 마지막 1개는 고정 문구용으로 남겨둡니다
+  for(let i = 0; i < fillerCount; i++){
+    if(i < dataHints.length){
+      slots.push({ jp: dataHints[i], kr: dataHintsKr[i] || '' });
+    } else {
+      const revealCount = i - dataHints.length + 1;
+      const revealed = riddle.jp.slice(0, revealCount);
+      slots.push({
+        jp: `さいしょの もじは ${revealed} だよ。`,
+        kr: `첫 글자는 ${revealed}예요.`
+      });
+    }
+  }
+  slots.push({ jp: `わたしは ${riddle.jp}です。`, kr: `나는 ${riddle.kr}입니다.` });
+  return slots;
+}
+
+/* 힌트의 발음이 끝난 뒤 2초가 지나면 자동으로 다음 힌트를 보여주는 콜백 체인.
+   5번째 힌트까지 다 나온 뒤에도 답을 못 맞히면, 발음이 끝나고 2초 뒤 정답을 공개합니다. */
+function onRiddleHintSpeechEnd(){
+  clearTimeout(riddleHintTimer);
+  if(isRiddleAnswering) return;
+  if(riddleHintIndex >= RIDDLE_TOTAL_HINTS){
+    riddleHintTimer = setTimeout(() => {
+      if(!isRiddleAnswering) revealRiddleAnswerByTimeout();
+    }, 2000);
+    return;
+  }
+  riddleHintTimer = setTimeout(() => {
+    if(isRiddleAnswering) return;
+    riddleHintIndex += 1;
+    renderRiddleHints(true); // 다음 힌트를 보여주고 발음하면, 발음이 끝난 뒤 다시 이 함수가 호출됩니다
+  }, 2000);
+}
+
 /* 지금까지 나온 힌트를 순서대로 화면에 쌓아 보여주고, 가장 최근 힌트만 소리 내어 읽어줍니다.
-   정답을 맞히거나 틀려서 다음 힌트로 넘어간 힌트에는 한글 뜻을 함께 보여줍니다. */
+   정답을 맞히거나 힌트가 넘어간 뒤에는 한글 뜻을 함께 보여줍니다. */
 function renderRiddleHints(speakLatest){
-  if(!currentRiddle) return;
+  if(!currentRiddle || !riddleHintSlots) return;
   const list = document.getElementById('riddleHintList');
   list.innerHTML = '';
   for(let i = 0; i < riddleHintIndex; i++){
     const item = document.createElement('div');
     item.className = 'riddle-hint-item';
-    item.innerHTML = `<span class="riddle-hint-num">힌트 ${i + 1}</span><span class="riddle-hint-text" id="riddleHintText${i}"></span>`;
+    item.innerHTML = `<span class="riddle-hint-text" id="riddleHintText${i}"></span>`;
     list.appendChild(item);
     const textEl = item.querySelector('.riddle-hint-text');
+    const hintText = riddleHintSlots[i].jp;
     if(i === riddleHintIndex - 1 && speakLatest){
-      speakWithHighlight(currentRiddle.hints[i], textEl, {rate:0.75});
+      speakWithHighlight(hintText, textEl, {rate:0.75, onEnd: onRiddleHintSpeechEnd});
     } else {
-      textEl.textContent = currentRiddle.hints[i];
+      textEl.textContent = hintText;
     }
-    // 이 힌트에 답을 해본(맞았거나 틀렸던) 뒤라면 한글 뜻을 힌트 아래에 함께 보여줍니다.
-    if(i < riddleTranslationRevealCount && currentRiddle.hintsKr && currentRiddle.hintsKr[i]){
+    // 이 힌트가 지나갔거나(자동으로 다음 힌트로 넘어갔거나) 정답을 맞힌 뒤라면 한글 뜻을 괄호로 같은 줄에 보여줍니다.
+    if(i < riddleTranslationRevealCount){
       const krEl = document.createElement('span');
       krEl.className = 'riddle-hint-kr';
-      krEl.textContent = currentRiddle.hintsKr[i];
+      krEl.textContent = ` (${riddleHintSlots[i].kr})`;
       item.appendChild(krEl);
     }
   }
   const counterEl = document.getElementById('riddleHintCounter');
-  if(counterEl) counterEl.textContent = `힌트 ${riddleHintIndex} / ${currentRiddle.hints.length}`;
-}
-
-function replayRiddleHint(){
-  if(!currentRiddle) return;
-  const textEl = document.getElementById('riddleHintText' + (riddleHintIndex - 1));
-  if(textEl) speakWithHighlight(currentRiddle.hints[riddleHintIndex - 1], textEl, {rate:0.75});
+  if(counterEl) counterEl.textContent = `힌트 ${riddleHintIndex} / ${riddleHintSlots.length}`;
 }
 
 function buildRiddleChoices(){
@@ -9405,11 +9500,36 @@ function buildRiddleChoices(){
     btn.dataset.jp = riddle.jp;
     btn.innerHTML = `
       ${renderWordVisual(riddle)}
-      <span class="btn-text-sub">${riddle.jp} (${riddle.kr})</span>
+      <span class="btn-text-jp">${riddle.jp}</span>
+      <span class="btn-text-kr">${riddle.kr}</span>
     `;
     btn.addEventListener('click', () => selectRiddleAnswer(btn, riddle));
     optionsContainer.appendChild(btn);
   });
+}
+
+/* 힌트 5개를 다 쓰고도 답을 못 맞혔을 때, 자동으로 정답을 공개하고 다음 문제로 넘어갑니다. */
+function revealRiddleAnswerByTimeout(){
+  if(!currentRiddle) return;
+  isRiddleAnswering = true;
+  const feedbackEl = document.getElementById('riddleFeedback');
+  const allButtons = document.querySelectorAll('#riddleOptions .emoji-btn');
+
+  riddleCombo = 0;
+  const comboEl = document.getElementById('riddleCombo');
+  if(comboEl) comboEl.textContent = riddleCombo;
+
+  recordWordResult(currentRiddle, false);
+  if(feedbackEl) feedbackEl.textContent = `정답은 ${currentRiddle.jp}(${currentRiddle.kr})였어요!`;
+  riddleTranslationRevealCount = riddleHintIndex;
+  renderRiddleHints(false);
+  allButtons.forEach(btn => {
+    if(btn.dataset.jp === currentRiddle.jp) btn.classList.add('correct-hint');
+  });
+
+  riddleAdvanceTimer = setTimeout(() => {
+    generateRiddleQuestion();
+  }, 2200);
 }
 
 function selectRiddleAnswer(selectedButton, riddle){
@@ -9422,13 +9542,14 @@ function selectRiddleAnswer(selectedButton, riddle){
 
   if(riddle.jp === currentRiddle.jp){
     isRiddleAnswering = true;
-    // 힌트를 적게 쓰고 맞힐수록 더 큰 보너스 점수를 줍니다
-    const bonus = Math.max(0, 4 - riddleHintIndex) * 5;
-    riddleScore += 10 + bonus;
+    clearTimeout(riddleHintTimer); // 정답을 맞혔으니 자동 힌트 진행을 멈춥니다
+    // 몇 번째 힌트에서 맞혔는지에 따라 점수를 차등 지급합니다: 1번째 5점 ~ 5번째 1점
+    const earnedScore = Math.max(1, (RIDDLE_TOTAL_HINTS + 1) - riddleHintIndex);
+    riddleScore += earnedScore;
     riddleCombo += 1;
     scoreEl.textContent = riddleScore;
     comboEl.textContent = riddleCombo;
-    feedbackEl.textContent = `정답이에요! 🎉 ${currentRiddle.jp}(${currentRiddle.kr})`;
+    feedbackEl.textContent = `정답이에요! 🎉 +${earnedScore}점 · ${currentRiddle.jp}(${currentRiddle.kr})`;
     playCorrectSound();
     // 다른 게임과 달리 여기서는 동물 울음 합성음(playAnimalCry) 대신,
     // 이모지가 커졌다 작아지는 연출에 맞춰 정답 히라가나를 소리 내어 읽어줍니다.
@@ -9455,28 +9576,9 @@ function selectRiddleAnswer(selectedButton, riddle){
     riddleCombo = 0;
     comboEl.textContent = riddleCombo;
     playWrongSound();
-
-    if(riddleHintIndex < currentRiddle.hints.length){
-      // 방금 틀린 힌트의 한글 뜻을 먼저 공개한 뒤, 다음 힌트로 넘어갑니다.
-      riddleTranslationRevealCount = riddleHintIndex;
-      riddleHintIndex += 1;
-      feedbackEl.textContent = wrongFeedbackText('아직 아니에요! 다음 힌트를 들어봐요 🔍');
-      renderRiddleHints(true);
-      setTimeout(() => { selectedButton.classList.remove('wrong'); }, 800);
-    } else {
-      isRiddleAnswering = true;
-      recordWordResult(currentRiddle, false);
-      feedbackEl.textContent = `정답은 ${currentRiddle.jp}(${currentRiddle.kr})였어요!`;
-      // 힌트를 다 썼으니 마지막 힌트까지 한글 뜻을 모두 공개합니다.
-      riddleTranslationRevealCount = riddleHintIndex;
-      renderRiddleHints(false);
-      allButtons.forEach(btn => {
-        if(btn.dataset.jp === currentRiddle.jp) btn.classList.add('correct-hint');
-      });
-      riddleAdvanceTimer = setTimeout(() => {
-        generateRiddleQuestion();
-      }, 2200);
-    }
+    feedbackEl.textContent = wrongFeedbackText('아직 아니에요! 다음 힌트를 들어봐요 🔍');
+    setTimeout(() => { selectedButton.classList.remove('wrong'); }, 800);
+    // 힌트는 정답 여부와 상관없이 onRiddleHintSpeechEnd()가 발음이 끝난 뒤 2초마다 자동으로 넘겨줍니다.
   }
 }
 
@@ -16441,11 +16543,16 @@ const TOP_MENU_EXTRA_ITEMS = [
     id: 'wordcards', title: '단어 카드', emoji: '📇',
     desc: '오늘 맞춘 단어와 전체 단어 카드를 모아봐요',
     action: () => openMenuPanel('menuWordcardsLevel')
+  },
+  {
+    id: 'videos', title: '히라가나 영상', emoji: '🎬',
+    desc: '일본 学研키즈TV의 히라가나 학습 영상 시리즈를 봐요',
+    action: () => openMenuPanel('menuVideosLevel')
   }
 ];
 
 function hideAllMenuPanels(){
-  ['menuCategoryLevel', 'menuSettingsLevel', 'menuWordcardsLevel'].forEach(id => {
+  ['menuCategoryLevel', 'menuSettingsLevel', 'menuWordcardsLevel', 'menuVideosLevel'].forEach(id => {
     const el = document.getElementById(id);
     if(el) el.style.display = 'none';
   });
@@ -16584,6 +16691,7 @@ function exitGameFullscreen(){
   stopEbookAudio();
   stopWordSearchDrag();
   clearTimeout(riddleAdvanceTimer);
+  clearTimeout(riddleHintTimer);
   clearTimeout(qaAdvanceTimer);
   clearTimeout(lifeqaAdvanceTimer);
   clearTimeout(shopAdvanceTimer);
