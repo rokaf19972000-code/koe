@@ -14785,6 +14785,14 @@ function hrStartAttempt(){
   }, HR_ATTEMPT_TIME_LIMIT);
 }
 
+/* 인식된 문자열에서 (공백/문장부호를 제거한 뒤) 맨 처음 등장하는 히라가나 한 글자만 뽑아냅니다.
+   히라가나가 하나도 없으면 빈 문자열을 반환합니다 */
+function extractFirstHiragana(s){
+  const norm = normalizePronounceText(s);
+  const match = norm.match(/[\u3041-\u3096\u309D-\u309F]/);
+  return match ? match[0] : '';
+}
+
 function hrHandleRecognitionResult(spokenText){
   if(hrAnswered) return;
   clearTimeout(hrAttemptTimer);
@@ -14793,14 +14801,34 @@ function hrHandleRecognitionResult(spokenText){
   const recognizedEl = document.getElementById('hrRecognizedChar');
   recognizedEl.classList.remove('listening');
   recognizedEl.classList.remove('preparing');
-  recognizedEl.textContent = spokenText ? spokenText : '( 인식 안 됨 )';
 
-  const norm = normalizePronounceText(spokenText);
-  const isCorrect = norm.length > 0 && norm.includes(currentHrQuestion.ch);
+  // 인식된 문자열 전체가 아니라, 맨 처음 나온 히라가나 한 글자만 화면에 표시하고 정답과 비교합니다
+  const firstChar = extractFirstHiragana(spokenText);
+  recognizedEl.textContent = firstChar ? firstChar : '( 인식 안 됨 )';
+
+  const isCorrect = firstChar !== '' && firstChar === currentHrQuestion.ch;
 
   if(isCorrect){
     hrHandleSuccess();
-  } else if(hrAttempt === 1){
+    return;
+  }
+
+  if(!firstChar){
+    // 시간 내에 음성이 들리지 않았거나 인식된 히라가나 문자가 없는 경우:
+    // 재시도 대기(2초)나 안내 문구 없이 바로 다음 시도의 '대기중' 상태로 돌아갑니다
+    if(hrAttempt === 1){
+      hrAttempt = 2;
+      document.getElementById('hrAttemptLabel').textContent = '2번째 시도';
+      document.getElementById('hrFeedback').textContent = '';
+      hrStartAttempt();
+    } else {
+      hrHandleFinalFail();
+    }
+    return;
+  }
+
+  // 히라가나는 인식됐지만 오답인 경우: 기존처럼 2초 대기 후 재시도합니다
+  if(hrAttempt === 1){
     hrAttempt = 2;
     document.getElementById('hrAttemptLabel').textContent = '2번째 시도';
     document.getElementById('hrFeedback').textContent = wrongFeedbackText('아쉬워요! 2초 후 한 번 더 들어볼게요');
