@@ -835,6 +835,65 @@
     width: 100%; height: 100%;
     border: 0;
   }
+  /* 🎤 히라가나 읽기 게임: 왼쪽엔 문제 글자, 오른쪽엔 음성으로 인식된 글자를 나란히 보여줌 */
+  .hr-attempt-label {
+    display: inline-block;
+    font-size: 12.5px;
+    font-weight: 800;
+    color: #fff;
+    background: var(--hanko);
+    border-radius: 999px;
+    padding: 3px 12px;
+    margin-bottom: 12px;
+  }
+  .hr-columns {
+    display: flex;
+    align-items: stretch;
+    justify-content: center;
+    gap: 14px;
+    margin-bottom: 14px;
+  }
+  .hr-column {
+    flex: 1;
+    max-width: 160px;
+    background: var(--washi);
+    border: 2px solid var(--line);
+    border-radius: 14px;
+    padding: 14px 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  .hr-column-label {
+    font-size: 12px;
+    color: #8a8272;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+  .hr-target-char {
+    font-size: 64px;
+    font-weight: 800;
+    color: var(--sumi);
+    line-height: 1;
+  }
+  .hr-recognized-char {
+    font-size: 48px;
+    font-weight: 800;
+    color: var(--hanko);
+    line-height: 1;
+    min-height: 58px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .hr-recognized-char.listening {
+    animation: pulseListening 1s ease-in-out infinite;
+  }
+  @keyframes pulseListening {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
+  }
   .riddle-hint-counter {
     font-size: 12.5px;
     color: #9c9484;
@@ -3648,6 +3707,7 @@
     <button class="tab-btn" onclick="switchMode('dakuonTest')">탁음·요음 쓰기 테스트 ✏️</button>
     <button class="tab-btn" onclick="switchMode('eawase')">그림 반쪽 맞추기 🧩</button>
     <button class="tab-btn" onclick="switchMode('silhouette')">실루엣 맞추기 🌑</button>
+    <button class="tab-btn" onclick="switchMode('hiraganaRead')">히라가나 읽기 🎤</button>
   </div>
 
   <!-- 🖥️ 게임 실행 화면 — 게임을 고르면 이 영역이 전체화면으로 표시됩니다 -->
@@ -4584,6 +4644,76 @@
         <div class="hs-result-row">최고 콤보: <b>🔥<span id="hwResultMaxCombo">0</span></b></div>
         <div class="hs-result-row hs-result-score">최종 점수 (콤보 가산 포함): <b><span id="hwResultScore">0</span>점</b></div>
         <button class="quiz-audio-btn" onclick="startHiraganaWriteGame()">🔄 다시 하기</button>
+      </div>
+    </div>
+    <br>
+  </div>
+
+  <!-- 🎤 히라가나 읽기 게임 MODE CONTENT (왼쪽 글자를 소리내어 읽으면 마이크로 인식해 판정하는 게임) -->
+  <div id="hiraganaReadMode" class="mode-content">
+    <div class="hs-container">
+      <div class="quiz-score-board">
+        <div>정답 점수: <span id="hrCorrectScore">0</span></div>
+        <div>오답 점수: <span id="hrWrongScore">0</span></div>
+        <div>문제: <span id="hrProgress">0</span>/10</div>
+      </div>
+
+      <!-- 시작 전 안내 화면 -->
+      <div id="hrStartScreen">
+        <div class="hs-start-desc">왼쪽에 나온 히라가나 글자를 소리 내어 읽어보세요! 마이크가 2초 안에 들은 소리를 인식해서 오른쪽에 보여줘요. 첫 시도에 맞히면 2점, 못 맞히면 2초 뒤 한 번 더 기회를 줘요 — 그때 맞히면 1점, 두 번 다 틀리면 오답 2점이 쌓여요. 총 10문제예요.</div>
+        <button class="quiz-audio-btn" onclick="startHiraganaReadGame()">🚀 게임 시작하기</button>
+        <button class="hs-reset-stats-btn" onclick="resetHrCharStats()">🗑️ 통계 기록 초기화</button>
+        <div id="hrUnsupportedMsg" class="unsupported-msg" style="display:none; margin-top:10px;">
+          이 브라우저는 음성 인식을 지원하지 않아요. 안드로이드 Chrome 브라우저를 사용해보세요.
+        </div>
+
+        <!-- 많이 틀린(실패한) 글자가 얼마나 더 자주 나올지 선택하는 가중치 옵션 -->
+        <div class="wm-sequence-label">틀린 글자 출제 가중치</div>
+        <div class="hs-weight-row" id="hrWeightRow">
+          <button class="lvl-btn" id="hrWeightBtn0" onclick="setHrWeightLevel(0)">균등하게</button>
+          <button class="lvl-btn active" id="hrWeightBtn1" onclick="setHrWeightLevel(1)">약하게</button>
+          <button class="lvl-btn" id="hrWeightBtn3" onclick="setHrWeightLevel(3)">강하게</button>
+          <button class="lvl-btn" id="hrWeightBtn4" onclick="setHrWeightLevel(4)">오답만</button>
+          <button class="lvl-btn" id="hrWeightBtn5" onclick="setHrWeightLevel(5)">🧠 SRS 복습</button>
+        </div>
+        <div class="hs-srs-note" id="hrSrsNote">🧠 SRS 모드: 단순히 많이 틀린 글자가 아니라, <b>지금 잊어버릴 때가 된 글자</b>를 계산해서 우선 출제해요. 잘 맞히면 다음 복습 주기가 길어지고, 실패하면 주기가 확 짧아져서 곧 다시 만나게 돼요.</div>
+
+        <!-- 글자별 성공/실패 횟수와 실패율을 보여주는 46자 통계 그리드 (히라가나 쓰기와는 별도로 집계) -->
+        <div class="hs-stat-grid" id="hrStatGrid"></div>
+        <div class="hs-stat-legend">
+          <span><i style="background:#dcf3dd; border:1.5px solid #9ccf9f;"></i>실패율 10% 이하</span>
+          <span><i style="background:#fbecc2; border:1.5px solid #e0c368;"></i>실패율 30% 이하</span>
+          <span><i style="background:#f8d6d2; border:1.5px solid #e59a8f;"></i>실패율 30% 초과</span>
+          <span><i style="background:#fff; border:1.5px solid var(--line);"></i>아직 안 풀어본 글자</span>
+        </div>
+      </div>
+
+      <!-- 문제 풀이 화면 -->
+      <div id="hrQuestionScreen" style="display:none;">
+        <div class="hr-attempt-label" id="hrAttemptLabel">1번째 시도</div>
+
+        <div class="hr-columns">
+          <div class="hr-column">
+            <div class="hr-column-label">이 글자를 읽어보세요</div>
+            <div class="hr-target-char" id="hrTargetChar">あ</div>
+          </div>
+          <div class="hr-column">
+            <div class="hr-column-label">인식된 발음</div>
+            <div class="hr-recognized-char" id="hrRecognizedChar">🎤</div>
+          </div>
+        </div>
+
+        <div class="hs-timerbar-track"><div class="hs-timerbar-fill" id="hrTimerFill"></div></div>
+
+        <div class="trace-result-feedback" id="hrFeedback"></div>
+      </div>
+
+      <!-- 결과 화면 -->
+      <div id="hrResultScreen" style="display:none;">
+        <div class="hs-result-title">🎉 결과 발표!</div>
+        <div class="hs-result-row">정답 점수: <b><span id="hrResultCorrect">0</span>점</b></div>
+        <div class="hs-result-row hs-result-score">오답 점수: <b><span id="hrResultWrong">0</span>점</b></div>
+        <button class="quiz-audio-btn" onclick="startHiraganaReadGame()">🔄 다시 하기</button>
       </div>
     </div>
     <br>
@@ -7713,6 +7843,36 @@ let hwCharStats = {};
 const HW_WEIGHT_KEY = 'kotobaHwWeightLevel';
 let hwWeightLevel = 1;
 
+/* 🎤 히라가나 읽기 게임 전역 상태
+   히라가나 글자를 보고 소리 내어 읽으면, 음성 인식으로 맞았는지 판정하는 게임.
+   - 문제당 최대 2번 시도할 수 있고, 시도마다 2초의 인식 제한 시간이 있음
+   - 1차 시도에서 맞히면: 정답 점수 +2, 바로 다음 문제
+   - 1차 시도에서 틀리면(오인식/시간초과): 2초 대기 후 2차 시도
+   - 2차 시도에서 맞히면: 정답 점수 +1, 다음 문제 / 2차도 틀리면: 오답 점수 +2, 다음 문제
+   - 총 10문제 풀고 결과 화면(정답 점수/오답 점수) 표시 */
+let hrQuestions = [];
+let hrIndex = 0;
+let hrCorrectScore = 0;
+let hrWrongScore = 0;
+let hrAttempt = 0; // 1 또는 2
+let hrAnswered = false;
+let hrListening = false;
+let hrRecognition = null;
+let hrAttemptTimer = null; // 시도당 2초 인식 제한 타이머
+let hrRetryTimer = null;   // 1차 실패 후 2차 시도까지 대기하는 타이머
+let hrAdvanceTimer = null;
+let currentHrQuestion = null;
+const HR_ATTEMPT_TIME_LIMIT = 2000; // 한 번의 시도당 2초
+const HR_RETRY_DELAY = 2000; // 1차 실패 후 2차 시도까지 대기 시간
+
+/* 🎤 히라가나 읽기 게임 - 글자별 성공/실패 누적 통계 및 출제 가중치.
+   히라가나 쓰기(HW_STATS_KEY)와는 별도의 키에 저장되어 서로 통계가 섞이지 않습니다 */
+const HR_STATS_KEY = 'kotobaHrCharStats';
+let hrCharStats = {};
+const HR_WEIGHT_KEY = 'kotobaHrWeightLevel';
+let hrWeightLevel = 1;
+
+
 /* 🧠 단어 메모리 게임 전역 상태 */
 let wmCount = 2;
 let wmQuestionIndex = 0;
@@ -8157,6 +8317,7 @@ function switchMode(mode) {
     document.getElementById('matchingMode').classList.add('active');
     stopListening();
     stopPronounceListening();
+    stopHrListening();
     getAudioContext();
     initMatchGame();
   } else if (mode === 'pronounce') {
@@ -8204,6 +8365,7 @@ function switchMode(mode) {
     document.getElementById('lineMatchMode').classList.add('active');
     stopListening();
     stopPronounceListening();
+    stopHrListening();
     getAudioContext();
     initLineMatchGame();
   } else if (mode === 'onomatopoeia') {
@@ -8211,6 +8373,7 @@ function switchMode(mode) {
     document.getElementById('onomatopoeiaMode').classList.add('active');
     stopListening();
     stopPronounceListening();
+    stopHrListening();
     getAudioContext();
     generateOnomatopoeiaQuestion();
   } else if (mode === 'trace') {
@@ -8218,6 +8381,7 @@ function switchMode(mode) {
     document.getElementById('traceMode').classList.add('active');
     stopListening();
     stopPronounceListening();
+    stopHrListening();
     getAudioContext();
     initTraceCanvas();
     setTraceStudyMode('word');
@@ -8237,6 +8401,7 @@ function switchMode(mode) {
     document.getElementById('karaokeMode').classList.add('active');
     stopListening();
     stopPronounceListening();
+    stopHrListening();
     getAudioContext();
     renderKaraokeList();
     closeKaraokeSong();
@@ -8251,6 +8416,7 @@ function switchMode(mode) {
     document.getElementById('riddleMode').classList.add('active');
     stopListening();
     stopPronounceListening();
+    stopHrListening();
     getAudioContext();
     generateRiddleQuestion();
   } else if (mode === 'qa') {
@@ -8258,6 +8424,7 @@ function switchMode(mode) {
     document.getElementById('qaMode').classList.add('active');
     stopListening();
     stopPronounceListening();
+    stopHrListening();
     getAudioContext();
     generateQaQuestion();
   } else if (mode === 'lifeqa') {
@@ -8265,6 +8432,7 @@ function switchMode(mode) {
     document.getElementById('lifeqaMode').classList.add('active');
     stopListening();
     stopPronounceListening();
+    stopHrListening();
     getAudioContext();
     generateLifeqaQuestion();
   } else if (mode === 'shop') {
@@ -8272,6 +8440,7 @@ function switchMode(mode) {
     document.getElementById('shopMode').classList.add('active');
     stopListening();
     stopPronounceListening();
+    stopHrListening();
     getAudioContext();
     generateShopQuestion();
   } else if (mode === 'spelling') {
@@ -8279,6 +8448,7 @@ function switchMode(mode) {
     document.getElementById('spellingMode').classList.add('active');
     stopListening();
     stopPronounceListening();
+    stopHrListening();
     getAudioContext();
     generateSpellingQuestion();
   } else if (mode === 'wordsearch') {
@@ -8286,6 +8456,7 @@ function switchMode(mode) {
     document.getElementById('wordsearchMode').classList.add('active');
     stopListening();
     stopPronounceListening();
+    stopHrListening();
     getAudioContext();
     initWordSearchGame();
   } else if (mode === 'worksheet') {
@@ -8293,6 +8464,7 @@ function switchMode(mode) {
     document.getElementById('worksheetMode').classList.add('active');
     stopListening();
     stopPronounceListening();
+    stopHrListening();
     getAudioContext();
     initWorksheetMode();
   } else if (mode === 'hiraganaSpeed') {
@@ -8300,6 +8472,7 @@ function switchMode(mode) {
     document.getElementById('hiraganaSpeedMode').classList.add('active');
     stopListening();
     stopPronounceListening();
+    stopHrListening();
     getAudioContext();
     initHiraganaSpeedGame();
   } else if (mode === 'wordMemory') {
@@ -8307,6 +8480,7 @@ function switchMode(mode) {
     document.getElementById('wordMemoryMode').classList.add('active');
     stopListening();
     stopPronounceListening();
+    stopHrListening();
     getAudioContext();
     initWordMemoryGame();
   } else if (mode === 'hiraganaWrite') {
@@ -8314,6 +8488,7 @@ function switchMode(mode) {
     document.getElementById('hiraganaWriteMode').classList.add('active');
     stopListening();
     stopPronounceListening();
+    stopHrListening();
     getAudioContext();
     initHiraganaWriteGame();
   } else if (mode === 'dakuonTest') {
@@ -8321,6 +8496,7 @@ function switchMode(mode) {
     document.getElementById('dakuonTestMode').classList.add('active');
     stopListening();
     stopPronounceListening();
+    stopHrListening();
     getAudioContext();
     initDtTestMode();
   } else if (mode === 'eawase') {
@@ -8328,6 +8504,7 @@ function switchMode(mode) {
     document.getElementById('eawaseMode').classList.add('active');
     stopListening();
     stopPronounceListening();
+    stopHrListening();
     getAudioContext();
     initEawaseGame();
   } else if (mode === 'silhouette') {
@@ -8335,18 +8512,29 @@ function switchMode(mode) {
     document.getElementById('silhouetteMode').classList.add('active');
     stopListening();
     stopPronounceListening();
+    stopHrListening();
     getAudioContext();
     initSilhouetteGame();
+  } else if (mode === 'hiraganaRead') {
+    document.querySelectorAll('.tab-btn')[30].classList.add('active');
+    document.getElementById('hiraganaReadMode').classList.add('active');
+    stopListening();
+    stopPronounceListening();
+    stopHrListening();
+    getAudioContext();
+    initHiraganaReadGame();
   } else if (mode === 'kanjiCards') {
     document.getElementById('kanjiCardsMode').classList.add('active');
     stopListening();
     stopPronounceListening();
+    stopHrListening();
     getAudioContext();
     initKanjiCardsMode();
   } else if (mode === 'adjective') {
     document.getElementById('adjectiveMode').classList.add('active');
     stopListening();
     stopPronounceListening();
+    stopHrListening();
     getAudioContext();
     initAdjectiveGame();
   }
@@ -8357,6 +8545,7 @@ function switchMode(mode) {
   if (mode !== 'emojiStorybook') stopEmojiStorybookAutoplay();
   if (mode !== 'karaoke') stopKaraokePlayback();
   if (mode !== 'wordsearch') stopWordSearchDrag();
+  if (mode !== 'hiraganaRead') stopHrListening();
 }
 
 function speakCurrentWord() {
@@ -14248,6 +14437,419 @@ function runPronounceFallback(){
 pronounceFallbackBtn.addEventListener('click', runPronounceFallback);
 pronounceFallbackInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter') runPronounceFallback(); });
 
+/* 🎤 히라가나 읽기 게임 로직
+   히라가나 글자를 보고 소리 내어 읽으면, 음성 인식으로 정답 여부를 판정하는 게임.
+   - 왼쪽엔 문제 글자, 오른쪽엔 마이크로 인식된 글자를 보여줌
+   - 시도당 2초의 인식 제한 시간이 있고, 문제당 최대 2번까지 시도할 수 있음
+   - 1차 시도 성공: 정답 점수 +2 / 1차 실패 → 2초 대기 후 2차 시도
+   - 2차 시도 성공: 정답 점수 +1 / 2차도 실패: 오답 점수 +2
+   - 총 10문제를 풀고 정답/오답 점수를 결과 화면에 보여줌 */
+const HrRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+/* 🎤 히라가나 읽기 게임 - 글자별 성공/실패 통계 저장/불러오기/초기화.
+   히라가나 쓰기와 동일한 구조를 그대로 재사용하되, 저장 키와 데이터는 별도로 관리합니다 */
+function loadHrCharStats() {
+  try {
+    const raw = localStorage.getItem(HR_STATS_KEY);
+    hrCharStats = raw ? JSON.parse(raw) : {};
+  } catch (e) {
+    hrCharStats = {};
+  }
+}
+
+function saveHrCharStats() {
+  try {
+    localStorage.setItem(HR_STATS_KEY, JSON.stringify(hrCharStats));
+  } catch (e) {
+    /* 저장 실패해도 게임 진행에는 지장 없음 */
+  }
+}
+
+function resetHrCharStats() {
+  const confirmed = confirm('히라가나 읽기의 글자별 성공/실패 통계 기록을 모두 초기화할까요?\n이 작업은 되돌릴 수 없어요.');
+  if (!confirmed) return;
+  hrCharStats = {};
+  saveHrCharStats();
+  renderHrStatGrid();
+}
+
+function hrGetStat(ch) {
+  if (!hrCharStats[ch]) hrCharStats[ch] = { correct: 0, wrong: 0, srsStage: 0, lastReviewAt: null };
+  if (typeof hrCharStats[ch].srsStage !== 'number') hrCharStats[ch].srsStage = 0;
+  if (hrCharStats[ch].lastReviewAt === undefined) hrCharStats[ch].lastReviewAt = null;
+  return hrCharStats[ch];
+}
+
+function loadHrWeightLevel() {
+  try {
+    const raw = localStorage.getItem(HR_WEIGHT_KEY);
+    const n = Number(raw);
+    hrWeightLevel = raw !== null && [0, 1, 3, 4, 5].includes(n) ? n : 1;
+  } catch (e) {
+    hrWeightLevel = 1;
+  }
+  document.querySelectorAll('#hrWeightRow .lvl-btn').forEach(btn => btn.classList.remove('active'));
+  const activeBtn = document.getElementById('hrWeightBtn' + hrWeightLevel);
+  if (activeBtn) activeBtn.classList.add('active');
+  const note = document.getElementById('hrSrsNote');
+  if (note) note.classList.toggle('active', hrWeightLevel === HS_WEIGHT_SRS_LEVEL);
+}
+
+function setHrWeightLevel(level) {
+  hrWeightLevel = level;
+  try {
+    localStorage.setItem(HR_WEIGHT_KEY, String(level));
+  } catch (e) {
+    /* 저장 실패해도 게임 진행에는 지장 없음 */
+  }
+  document.querySelectorAll('#hrWeightRow .lvl-btn').forEach(btn => btn.classList.remove('active'));
+  const activeBtn = document.getElementById('hrWeightBtn' + level);
+  if (activeBtn) activeBtn.classList.add('active');
+  const note = document.getElementById('hrSrsNote');
+  if (note) note.classList.toggle('active', level === HS_WEIGHT_SRS_LEVEL);
+}
+
+/* 최종 실패(2차 시도까지 실패): 실패 횟수 +1 + SRS 단계를 낮춰 다음 복습 시점을 앞당깁니다 */
+function hrRecordMistake(ch) {
+  const stat = hrGetStat(ch);
+  stat.wrong += 1;
+  srsUpdateStat(stat, false);
+  saveHrCharStats();
+}
+
+/* 성공(1차든 2차든): 성공 횟수 +1 + SRS 단계를 올려 다음 복습 시점을 뒤로 미룹니다 */
+function hrRecordCorrect(ch) {
+  const stat = hrGetStat(ch);
+  stat.correct += 1;
+  srsUpdateStat(stat, true);
+  saveHrCharStats();
+}
+
+/* 실패 횟수를 반영해 중복 없이 count개를 뽑는 가중 무작위 샘플링.
+   히라가나 쓰기와 동일한 배수/오답만/SRS 규칙(HS_WEIGHT_MULTIPLIERS, HS_WEIGHT_ONLY_WRONG_LEVEL,
+   HS_WEIGHT_SRS_LEVEL)을 재사용하되, hrCharStats/hrWeightLevel을 기준으로 뽑습니다 */
+function hrWeightedPick(count) {
+  if (hrWeightLevel === HS_WEIGHT_SRS_LEVEL) {
+    return srsWeightedPick(HIRAGANA_LIST, hrCharStats, count);
+  }
+  if (hrWeightLevel === HS_WEIGHT_ONLY_WRONG_LEVEL) {
+    const onlyWrongList = HIRAGANA_LIST.filter(item => {
+      const stat = hrCharStats[item.ch] || { correct: 0, wrong: 0 };
+      const total = stat.correct + stat.wrong;
+      return total > 0 && (stat.wrong / total) >= 0.30;
+    });
+    const sourceList = onlyWrongList.length > 0 ? onlyWrongList : HIRAGANA_LIST;
+    const shuffled = sourceList.slice().sort(() => Math.random() - 0.5);
+    const result = [];
+    while (result.length < count) {
+      const remaining = count - result.length;
+      const take = Math.min(remaining, shuffled.length);
+      result.push(...shuffled.slice(0, take));
+      shuffled.sort(() => Math.random() - 0.5);
+    }
+    return result;
+  }
+
+  const multiplier = HS_WEIGHT_MULTIPLIERS[hrWeightLevel] !== undefined ? HS_WEIGHT_MULTIPLIERS[hrWeightLevel] : 2;
+  const pool = HIRAGANA_LIST.map(item => {
+    const stat = hrCharStats[item.ch] || { correct: 0, wrong: 0 };
+    return { item, weight: 1 + stat.wrong * multiplier };
+  });
+  const result = [];
+  const n = Math.min(count, pool.length);
+  for (let i = 0; i < n; i++) {
+    const totalWeight = pool.reduce((sum, p) => sum + p.weight, 0);
+    let r = Math.random() * totalWeight;
+    let pickIdx = pool.length - 1;
+    for (let j = 0; j < pool.length; j++) {
+      r -= pool[j].weight;
+      if (r <= 0) { pickIdx = j; break; }
+    }
+    result.push(pool[pickIdx].item);
+    pool.splice(pickIdx, 1);
+  }
+  return result;
+}
+
+/* 게임 시작 화면에 46자를 오십음도 표 모양으로 배치하고, 글자별 성공/실패 횟수와
+   실패율 색상을 보여줍니다. hsPlayStatCellPreview는 통계와 무관하게 발음만 들려주는
+   공용 미리듣기 함수라 다른 히라가나 게임들과 그대로 함께 사용합니다 */
+function renderHrStatGrid() {
+  const grid = document.getElementById('hrStatGrid');
+  if (!grid) return;
+  grid.innerHTML = '';
+
+  grid.appendChild(document.createElement('div'));
+
+  HS_COL_HEADS.forEach(head => {
+    const h = document.createElement('div');
+    h.className = 'hs-stat-colhead';
+    h.textContent = head;
+    grid.appendChild(h);
+  });
+
+  HS_TABLE_ROWS.forEach(row => {
+    const rowHead = document.createElement('div');
+    rowHead.className = 'hs-stat-rowhead';
+    rowHead.textContent = row.label;
+    grid.appendChild(rowHead);
+
+    row.chars.forEach(ch => {
+      if (!ch) {
+        grid.appendChild(document.createElement('div'));
+        return;
+      }
+      const stat = hrCharStats[ch] || { correct: 0, wrong: 0 };
+      const total = stat.correct + stat.wrong;
+      const wrongRate = total === 0 ? null : stat.wrong / total;
+
+      let colorClass = 'hs-stat-neutral';
+      if (wrongRate !== null) {
+        if (wrongRate <= 0.10) colorClass = 'hs-stat-green';
+        else if (wrongRate <= 0.30) colorClass = 'hs-stat-yellow';
+        else colorClass = 'hs-stat-red';
+      }
+
+      const cell = document.createElement('div');
+      cell.className = 'hs-stat-cell ' + colorClass;
+      cell.innerHTML = `
+        <span class="hs-stat-correct">${stat.correct}</span>
+        <span class="hs-stat-ch">${ch}</span>
+        <span class="hs-stat-wrong">${stat.wrong}</span>
+      `;
+      cell.addEventListener('click', () => hsPlayStatCellPreview(cell, ch));
+      grid.appendChild(cell);
+    });
+  });
+}
+
+function initHiraganaReadGame(){
+  clearTimeout(hrAttemptTimer);
+  clearTimeout(hrRetryTimer);
+  clearTimeout(hrAdvanceTimer);
+  stopHrListening();
+  document.getElementById('hrStartScreen').style.display = 'block';
+  document.getElementById('hrQuestionScreen').style.display = 'none';
+  document.getElementById('hrResultScreen').style.display = 'none';
+  hrCorrectScore = 0; hrWrongScore = 0; hrIndex = 0;
+  document.getElementById('hrCorrectScore').textContent = '0';
+  document.getElementById('hrWrongScore').textContent = '0';
+  document.getElementById('hrProgress').textContent = '0';
+
+  // 저장된 글자별 성공/실패 통계를 불러와 시작 화면의 46자 그리드에 표시합니다
+  loadHrCharStats();
+  renderHrStatGrid();
+
+  // 저장된 가중치 강도(균등/약하게/보통/강하게/오답만/SRS)를 불러와 버튼 강조를 갱신합니다
+  loadHrWeightLevel();
+
+  if(!HrRecognitionAPI){
+    document.getElementById('hrUnsupportedMsg').style.display = 'block';
+  }
+}
+
+function startHiraganaReadGame(){
+  clearTimeout(hrAttemptTimer);
+  clearTimeout(hrRetryTimer);
+  clearTimeout(hrAdvanceTimer);
+  stopHrListening();
+  hrCorrectScore = 0; hrWrongScore = 0; hrIndex = 0;
+  document.getElementById('hrCorrectScore').textContent = '0';
+  document.getElementById('hrWrongScore').textContent = '0';
+
+  // HIRAGANA_LIST 46자 중 10개를 뽑아 이번 판의 문제 세트를 만듭니다.
+  // 이전 게임들에서 자주 틀린 글자일수록 더 높은 확률로 뽑히도록 통계를 반영합니다
+  loadHrCharStats();
+  hrQuestions = hrWeightedPick(10);
+
+  document.getElementById('hrStartScreen').style.display = 'none';
+  document.getElementById('hrResultScreen').style.display = 'none';
+  document.getElementById('hrQuestionScreen').style.display = 'block';
+
+  showHiraganaReadQuestion();
+}
+
+function showHiraganaReadQuestion(){
+  if(hrIndex >= hrQuestions.length){
+    hrShowResult();
+    return;
+  }
+  hrAnswered = false;
+  hrAttempt = 1;
+  clearTimeout(hrAttemptTimer);
+  clearTimeout(hrRetryTimer);
+  clearTimeout(hrAdvanceTimer);
+
+  document.getElementById('hrProgress').textContent = hrIndex + 1;
+
+  const q = hrQuestions[hrIndex];
+  currentHrQuestion = q;
+
+  const targetEl = document.getElementById('hrTargetChar');
+  targetEl.textContent = q.ch;
+  targetEl.style.animation = 'none';
+  void targetEl.offsetWidth;
+  targetEl.style.animation = 'quizAppear .35s cubic-bezier(.175, .885, .32, 1.275)';
+
+  const recognizedEl = document.getElementById('hrRecognizedChar');
+  recognizedEl.textContent = '🎤';
+  recognizedEl.classList.remove('listening');
+
+  document.getElementById('hrAttemptLabel').textContent = '1번째 시도';
+  document.getElementById('hrFeedback').textContent = '';
+
+  hrStartAttempt();
+}
+
+function hrStartAttempt(){
+  if(!HrRecognitionAPI){
+    // 음성 인식을 지원하지 않는 브라우저라면 시도할 수 없으니 바로 최종 실패로 처리합니다.
+    hrHandleFinalFail();
+    return;
+  }
+
+  const recognizedEl = document.getElementById('hrRecognizedChar');
+  recognizedEl.textContent = '🎤';
+  recognizedEl.classList.add('listening');
+
+  // 시도당 2초 제한을 보여주는 타이머 바 애니메이션
+  const fill = document.getElementById('hrTimerFill');
+  fill.style.transition = 'none';
+  fill.style.width = '100%';
+  void fill.offsetWidth;
+  fill.style.transition = `width ${HR_ATTEMPT_TIME_LIMIT / 1000}s linear`;
+  fill.style.width = '0%';
+
+  hrRecognition = new HrRecognitionAPI();
+  hrRecognition.lang = 'ja-JP';
+  hrRecognition.continuous = false;
+  hrRecognition.interimResults = false;
+  hrRecognition.maxAlternatives = 3;
+  hrListening = true;
+
+  hrRecognition.onresult = (event) => {
+    let spoken = "";
+    for(let i = 0; i < event.results.length; i++){
+      spoken += event.results[i][0].transcript;
+    }
+    hrHandleRecognitionResult(spoken.trim());
+  };
+
+  // 권한 거부 등 오류가 나도 '이번 시도에서 못 맞힘'으로 처리해 게임 흐름이 멈추지 않게 합니다.
+  hrRecognition.onerror = () => {
+    hrHandleRecognitionResult('');
+  };
+
+  hrRecognition.onend = () => {
+    hrListening = false;
+  };
+
+  try{ hrRecognition.start(); }catch(e){}
+
+  clearTimeout(hrAttemptTimer);
+  hrAttemptTimer = setTimeout(() => {
+    // 2초 안에 인식 결과가 오지 않으면 이번 시도는 실패로 처리합니다.
+    hrHandleRecognitionResult('');
+  }, HR_ATTEMPT_TIME_LIMIT);
+}
+
+function hrHandleRecognitionResult(spokenText){
+  if(hrAnswered) return;
+  clearTimeout(hrAttemptTimer);
+  stopHrListening();
+
+  const recognizedEl = document.getElementById('hrRecognizedChar');
+  recognizedEl.classList.remove('listening');
+  recognizedEl.textContent = spokenText ? spokenText : '( 인식 안 됨 )';
+
+  const norm = normalizePronounceText(spokenText);
+  const isCorrect = norm.length > 0 && norm.includes(currentHrQuestion.ch);
+
+  if(isCorrect){
+    hrHandleSuccess();
+  } else if(hrAttempt === 1){
+    hrAttempt = 2;
+    document.getElementById('hrAttemptLabel').textContent = '2번째 시도';
+    document.getElementById('hrFeedback').textContent = wrongFeedbackText('아쉬워요! 2초 후 한 번 더 들어볼게요');
+    hrRetryTimer = setTimeout(() => {
+      hrStartAttempt();
+    }, HR_RETRY_DELAY);
+  } else {
+    hrHandleFinalFail();
+  }
+}
+
+function hrHandleSuccess(){
+  if(hrAnswered) return;
+  hrAnswered = true;
+  clearTimeout(hrAttemptTimer);
+  clearTimeout(hrRetryTimer);
+  stopHrListening();
+
+  const earned = hrAttempt === 1 ? 2 : 1;
+  hrCorrectScore += earned;
+  document.getElementById('hrCorrectScore').textContent = hrCorrectScore;
+
+  if(typeof playCorrectSound === 'function') playCorrectSound();
+  hrRecordCorrect(currentHrQuestion.ch);
+
+  const feedbackEl = document.getElementById('hrFeedback');
+  feedbackEl.style.color = 'var(--correct)';
+  feedbackEl.textContent = `🎉 정답이에요! (+${earned}점) · ${currentHrQuestion.ch} (${currentHrQuestion.romaji})`;
+
+  hrAdvanceTimer = setTimeout(() => {
+    hrIndex += 1;
+    showHiraganaReadQuestion();
+  }, 1200);
+}
+
+function hrHandleFinalFail(){
+  if(hrAnswered) return;
+  hrAnswered = true;
+  clearTimeout(hrAttemptTimer);
+  clearTimeout(hrRetryTimer);
+  stopHrListening();
+
+  hrWrongScore += 2;
+  document.getElementById('hrWrongScore').textContent = hrWrongScore;
+
+  if(typeof playWrongSound === 'function') playWrongSound();
+  hrRecordMistake(currentHrQuestion.ch);
+
+  const feedbackEl = document.getElementById('hrFeedback');
+  feedbackEl.style.color = wrongFeedbackColor();
+  feedbackEl.textContent = `아쉬워요! 정답은 ${currentHrQuestion.ch} (${currentHrQuestion.romaji})이었어요`;
+
+  hrAdvanceTimer = setTimeout(() => {
+    hrIndex += 1;
+    showHiraganaReadQuestion();
+  }, 1400);
+}
+
+function hrShowResult(){
+  document.getElementById('hrQuestionScreen').style.display = 'none';
+  document.getElementById('hrResultScreen').style.display = 'block';
+  document.getElementById('hrResultCorrect').textContent = hrCorrectScore;
+  document.getElementById('hrResultWrong').textContent = hrWrongScore;
+}
+
+/* 게임을 벗어나거나 문제가 바뀔 때 마이크와 관련 타이머를 모두 정리합니다 */
+function stopHrListening(){
+  hrListening = false;
+  clearTimeout(hrAttemptTimer);
+  clearTimeout(hrRetryTimer);
+  const recognizedEl = document.getElementById('hrRecognizedChar');
+  if(recognizedEl) recognizedEl.classList.remove('listening');
+  if(hrRecognition){
+    try{
+      hrRecognition.onresult = null;
+      hrRecognition.onerror = null;
+      hrRecognition.onend = null;
+      hrRecognition.stop();
+    }catch(e){}
+  }
+}
+
 /* 🌅 하루 일과 씬(scene) 모드 로직
    실제 아기가 배우는 방식처럼, 단어를 낱개로 퀴즈 풀게 하지 않고
    상황(기상/식사/목욕/놀이/취침) 속에서 부모가 하는 말을 반복해서 들려줍니다. */
@@ -16472,6 +17074,7 @@ const MENU_CATEGORIES = [
     desc: '히라가나 글자 자체를 집중적으로 익히고 연습해요',
     games: [
       {mode:'hiraganaWrite', title:'히라가나 쓰기', emoji:'🖊️'},
+      {mode:'hiraganaRead', title:'히라가나 읽기', emoji:'🎤'},
       {mode:'hiraganaSpeed', title:'히라가나 카드찾기', emoji:'⚡'},
       {mode:'eawase', title:'그림 반쪽 맞추기', emoji:'🧩'},
       {mode:'silhouette', title:'실루엣 맞추기', emoji:'🌑'},
