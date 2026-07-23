@@ -4660,7 +4660,7 @@
 
       <!-- 시작 전 안내 화면 -->
       <div id="hrStartScreen">
-        <div class="hs-start-desc">왼쪽에 나온 히라가나 글자를 소리 내어 읽어보세요! 마이크가 2초 안에 들은 소리를 인식해서 오른쪽에 보여줘요. 첫 시도에 맞히면 2점, 못 맞히면 2초 뒤 한 번 더 기회를 줘요 — 그때 맞히면 1점, 두 번 다 틀리면 오답 2점이 쌓여요. 총 10문제예요.</div>
+        <div class="hs-start-desc">왼쪽에 나온 히라가나 글자를 소리 내어 읽어보세요! 마이크가 들은 소리를 인식해서 오른쪽에 보여줘요. 첫 시도에 맞히면 2점, 못 맞히면 2초 뒤 한 번 더 기회를 줘요 — 그때 맞히면 1점, 두 번 다 틀리면 오답 2점이 쌓여요. 총 10문제예요.</div>
         <button class="quiz-audio-btn" onclick="startHiraganaReadGame()">🚀 게임 시작하기</button>
         <button class="hs-reset-stats-btn" onclick="resetHrCharStats()">🗑️ 통계 기록 초기화</button>
         <div id="hrUnsupportedMsg" class="unsupported-msg" style="display:none; margin-top:10px;">
@@ -7845,7 +7845,7 @@ let hwWeightLevel = 1;
 
 /* 🎤 히라가나 읽기 게임 전역 상태
    히라가나 글자를 보고 소리 내어 읽으면, 음성 인식으로 맞았는지 판정하는 게임.
-   - 문제당 최대 2번 시도할 수 있고, 시도마다 2초의 인식 제한 시간이 있음
+   - 문제당 최대 2번 시도할 수 있고, 시도마다 4.5초의 인식 제한 시간이 있음
    - 1차 시도에서 맞히면: 정답 점수 +2, 바로 다음 문제
    - 1차 시도에서 틀리면(오인식/시간초과): 2초 대기 후 2차 시도
    - 2차 시도에서 맞히면: 정답 점수 +1, 다음 문제 / 2차도 틀리면: 오답 점수 +2, 다음 문제
@@ -7858,11 +7858,11 @@ let hrAttempt = 0; // 1 또는 2
 let hrAnswered = false;
 let hrListening = false;
 let hrRecognition = null;
-let hrAttemptTimer = null; // 시도당 2초 인식 제한 타이머
+let hrAttemptTimer = null; // 시도당 인식 제한 타이머
 let hrRetryTimer = null;   // 1차 실패 후 2차 시도까지 대기하는 타이머
 let hrAdvanceTimer = null;
 let currentHrQuestion = null;
-const HR_ATTEMPT_TIME_LIMIT = 2000; // 한 번의 시도당 2초
+const HR_ATTEMPT_TIME_LIMIT = 4500; // 한 번의 시도당 4.5초 (음성 인식 서버 왕복 시간을 고려해 2초에서 늘림)
 const HR_RETRY_DELAY = 2000; // 1차 실패 후 2차 시도까지 대기 시간
 
 /* 🎤 히라가나 읽기 게임 - 글자별 성공/실패 누적 통계 및 출제 가중치.
@@ -14748,7 +14748,7 @@ function hrStartAttempt(){
 
   clearTimeout(hrAttemptTimer);
   hrAttemptTimer = setTimeout(() => {
-    // 2초 안에 인식 결과가 오지 않으면 이번 시도는 실패로 처리합니다.
+    // 제한 시간 안에 인식 결과가 오지 않으면 이번 시도는 실패로 처리합니다.
     hrHandleRecognitionResult('');
   }, HR_ATTEMPT_TIME_LIMIT);
 }
