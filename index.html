@@ -890,6 +890,10 @@
   .hr-recognized-char.listening {
     animation: pulseListening 1s ease-in-out infinite;
   }
+  .hr-recognized-char.preparing {
+    color: #b7ab94;
+    opacity: 0.6;
+  }
   @keyframes pulseListening {
     0%, 100% { opacity: 0.4; }
     50% { opacity: 1; }
@@ -14692,8 +14696,9 @@ function showHiraganaReadQuestion(){
   targetEl.style.animation = 'quizAppear .35s cubic-bezier(.175, .885, .32, 1.275)';
 
   const recognizedEl = document.getElementById('hrRecognizedChar');
-  recognizedEl.textContent = '대기중';
+  recognizedEl.textContent = '준비중';
   recognizedEl.classList.remove('listening');
+  recognizedEl.classList.add('preparing');
 
   document.getElementById('hrAttemptLabel').textContent = '1번째 시도';
   document.getElementById('hrFeedback').textContent = '';
@@ -14709,10 +14714,13 @@ function hrStartAttempt(){
   }
 
   const recognizedEl = document.getElementById('hrRecognizedChar');
-  recognizedEl.textContent = '대기중';
-  recognizedEl.classList.add('listening');
+  // 아직 마이크가 실제로 듣기 시작한 건 아니므로 '준비중'으로 표시합니다
+  // (onstart 이벤트가 들어와야 진짜로 듣기 시작한 '대기중' 상태가 됩니다)
+  recognizedEl.textContent = '준비중';
+  recognizedEl.classList.remove('listening');
+  recognizedEl.classList.add('preparing');
 
-  // 시도당 2초 제한을 보여주는 타이머 바 애니메이션
+  // 시도당 제한을 보여주는 타이머 바 애니메이션
   const fill = document.getElementById('hrTimerFill');
   fill.style.transition = 'none';
   fill.style.width = '100%';
@@ -14723,26 +14731,42 @@ function hrStartAttempt(){
   hrRecognition = new HrRecognitionAPI();
   hrRecognition.lang = 'ja-JP';
   hrRecognition.continuous = false;
-  hrRecognition.interimResults = false;
-  hrRecognition.maxAlternatives = 3;
+  // 첫 글자가 인식되는 즉시 반응할 수 있도록 중간(임시) 인식 결과도 받습니다
+  hrRecognition.interimResults = true;
+  hrRecognition.maxAlternatives = 1;
   hrListening = true;
+  let hrResultHandled = false;
 
-  // 마이크에 음성이 들어오기 시작했지만 아직 인식 결과가 나오기 전이면 '인식중'으로 바꿔 보여줍니다.
-  // (그 전까지는 hrStartAttempt에서 설정한 '대기중' 상태가 유지됩니다)
+  // 마이크가 실제로 켜져서 듣기를 시작하면 '대기중'으로 전환합니다 (아직 음성 신호는 없는 상태)
+  hrRecognition.onstart = () => {
+    recognizedEl.classList.remove('preparing');
+    recognizedEl.classList.add('listening');
+    recognizedEl.textContent = '대기중';
+  };
+
+  // 마이크에 음성 신호가 들어오기 시작했지만 아직 인식 결과가 나오기 전이면 '인식중'으로 바꿔 보여줍니다.
   hrRecognition.onspeechstart = () => {
     recognizedEl.textContent = '인식중';
   };
 
+  // 첫 히라가나 글자가 인식되는 즉시(임시 결과 포함) 듣기를 중단하고 판정합니다.
   hrRecognition.onresult = (event) => {
+    if(hrResultHandled) return;
     let spoken = "";
     for(let i = 0; i < event.results.length; i++){
       spoken += event.results[i][0].transcript;
     }
-    hrHandleRecognitionResult(spoken.trim());
+    spoken = spoken.trim();
+    if(!spoken) return; // 아직 아무 글자도 인식되지 않았으면 계속 기다립니다
+    hrResultHandled = true;
+    try{ hrRecognition.stop(); }catch(e){}
+    hrHandleRecognitionResult(spoken);
   };
 
   // 권한 거부 등 오류가 나도 '이번 시도에서 못 맞힘'으로 처리해 게임 흐름이 멈추지 않게 합니다.
   hrRecognition.onerror = () => {
+    if(hrResultHandled) return;
+    hrResultHandled = true;
     hrHandleRecognitionResult('');
   };
 
@@ -14755,6 +14779,8 @@ function hrStartAttempt(){
   clearTimeout(hrAttemptTimer);
   hrAttemptTimer = setTimeout(() => {
     // 제한 시간 안에 인식 결과가 오지 않으면 이번 시도는 실패로 처리합니다.
+    if(hrResultHandled) return;
+    hrResultHandled = true;
     hrHandleRecognitionResult('');
   }, HR_ATTEMPT_TIME_LIMIT);
 }
@@ -14766,6 +14792,7 @@ function hrHandleRecognitionResult(spokenText){
 
   const recognizedEl = document.getElementById('hrRecognizedChar');
   recognizedEl.classList.remove('listening');
+  recognizedEl.classList.remove('preparing');
   recognizedEl.textContent = spokenText ? spokenText : '( 인식 안 됨 )';
 
   const norm = normalizePronounceText(spokenText);
@@ -14778,6 +14805,8 @@ function hrHandleRecognitionResult(spokenText){
     document.getElementById('hrAttemptLabel').textContent = '2번째 시도';
     document.getElementById('hrFeedback').textContent = wrongFeedbackText('아쉬워요! 2초 후 한 번 더 들어볼게요');
     hrRetryTimer = setTimeout(() => {
+      // 틀린 글자를 지우고 다시 듣기 준비 상태로 돌아갑니다
+      recognizedEl.textContent = '';
       hrStartAttempt();
     }, HR_RETRY_DELAY);
   } else {
@@ -14845,9 +14874,13 @@ function stopHrListening(){
   clearTimeout(hrAttemptTimer);
   clearTimeout(hrRetryTimer);
   const recognizedEl = document.getElementById('hrRecognizedChar');
-  if(recognizedEl) recognizedEl.classList.remove('listening');
+  if(recognizedEl){
+    recognizedEl.classList.remove('listening');
+    recognizedEl.classList.remove('preparing');
+  }
   if(hrRecognition){
     try{
+      hrRecognition.onstart = null;
       hrRecognition.onspeechstart = null;
       hrRecognition.onresult = null;
       hrRecognition.onerror = null;
