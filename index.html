@@ -14692,7 +14692,7 @@ function showHiraganaReadQuestion(){
   targetEl.style.animation = 'quizAppear .35s cubic-bezier(.175, .885, .32, 1.275)';
 
   const recognizedEl = document.getElementById('hrRecognizedChar');
-  recognizedEl.textContent = '🎤';
+  recognizedEl.textContent = '대기중';
   recognizedEl.classList.remove('listening');
 
   document.getElementById('hrAttemptLabel').textContent = '1번째 시도';
@@ -14709,7 +14709,7 @@ function hrStartAttempt(){
   }
 
   const recognizedEl = document.getElementById('hrRecognizedChar');
-  recognizedEl.textContent = '🎤';
+  recognizedEl.textContent = '대기중';
   recognizedEl.classList.add('listening');
 
   // 시도당 2초 제한을 보여주는 타이머 바 애니메이션
@@ -14726,6 +14726,12 @@ function hrStartAttempt(){
   hrRecognition.interimResults = false;
   hrRecognition.maxAlternatives = 3;
   hrListening = true;
+
+  // 마이크에 음성이 들어오기 시작했지만 아직 인식 결과가 나오기 전이면 '인식중'으로 바꿔 보여줍니다.
+  // (그 전까지는 hrStartAttempt에서 설정한 '대기중' 상태가 유지됩니다)
+  hrRecognition.onspeechstart = () => {
+    recognizedEl.textContent = '인식중';
+  };
 
   hrRecognition.onresult = (event) => {
     let spoken = "";
@@ -14842,6 +14848,7 @@ function stopHrListening(){
   if(recognizedEl) recognizedEl.classList.remove('listening');
   if(hrRecognition){
     try{
+      hrRecognition.onspeechstart = null;
       hrRecognition.onresult = null;
       hrRecognition.onerror = null;
       hrRecognition.onend = null;
